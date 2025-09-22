@@ -3,6 +3,8 @@ layout: page
 title: Tools
 ---
 
+- [Home](index.md)
+
 # Tools 🔧 
 
 Scripts and utilities for cybersecurity tasks. Here are some of the tools I've created:
