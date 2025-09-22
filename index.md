@@ -7,5 +7,5 @@ This site contains my write-ups, tools, and scripts.
 
 ## Sections
 
-- [Write-ups](writeups/index.md)
+- [Write-ups](writeups/tools.md)
 - [Tools](tools/index.md)
