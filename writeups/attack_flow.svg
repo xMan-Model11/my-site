@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="760" height="420" viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" aria-labelledby="title desc" role="img">
+  <title id="title">MFA Replay Attack Flow</title>
+  <desc id="desc">Diagram showing victim browser -> Evilginx2 -> Real Service -> capture -> attacker replay</desc>
+  <style>
+    .box { fill:#f8fafc; stroke:#0f172a; stroke-width:1.5; rx:6; ry:6; }
+    .proxy { fill:#fff7ed; stroke:#c2410c; }
+    .arrow { stroke:#0f172a; stroke-width:1.6; marker-end:url(#arrowhead); fill:none; }
+    .text { font-family: Inter, Roboto, Arial, sans-serif; font-size:13px; fill:#0f172a; }
+    .muted { fill:#475569; font-size:12px; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L9,4 L0,8 z" fill="#0f172a" />
+    </marker>
+  </defs>
+
+  <!-- Victim Browser -->
+  <rect x="28" y="30" width="160" height="60" class="box"/>
+  <text class="text" x="48" y="55">Victim Browser</text>
+  <text class="muted" x="34" y="75">(clicks phishing URL / submits credentials + MFA)</text>
+
+  <!-- Arrow to Proxy -->
+  <path class="arrow" d="M110 90 L110 135" />
+
+  <!-- Evilginx2 Proxy -->
+  <rect x="250" y="110" width="260" height="100" class="proxy"/>
+  <text class="text" x="280" y="140">Evilginx2 (Adversary-in-the-Middle)</text>
+  <text class="muted" x="280" y="160">- Forwards traffic</text>
+  <text class="muted" x="280" y="178">- Captures credentials & session cookies</text>
+
+  <!-- Arrow to Real Service -->
+  <path class="arrow" d="M370 210 L370 260" />
+
+  <!-- Real Service -->
+  <rect x="240" y="260" width="220" height="60" class="box"/>
+  <text class="text" x="275" y="295">Real Service / Identity Provider</text>
+  <text class="muted" x="270" y="312">(issues session tokens / cookies)</text>
+
+  <!-- Captured tokens stored -->
+  <rect x="540" y="130" width="170" height="60" class="box"/>
+  <text class="text" x="560" y="155">Captured Tokens</text>
+  <text class="muted" x="548" y="175">(stored on Evilginx2)</text>
+
+  <!-- Arrow from Proxy to Captured tokens (dashed) -->
+  <path d="M460 150 L540 150" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#arrowhead)"/>
+
+  <!-- Attacker Workspace -->
+  <rect x="540" y="220" width="170" height="70" class="box"/>
+  <text class="text" x="560" y="248">Attacker Workspace</text>
+  <text class="muted" x="548" y="268">(export cookies → import with Cookie Editor)</text>
+
+  <!-- Arrow to Attacker Browser -->
+  <path class="arrow" d="M640 290 L640 350" />
+
+  <!-- Attacker Browser -->
+  <rect x="520" y="350" width="220" height="50" class="box"/>
+  <text class="text" x="560" y="380">Attacker Browser — impersonates victim</text>
+  <text class="muted" x="548" y="398">(MFA bypass via session replay)</text>
+
+  <!-- Connecting lines back to attacker for context -->
+  <path d="M470 220 L540 220" stroke="#0f172a" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+</svg>
