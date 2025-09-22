@@ -61,36 +61,8 @@ The lab followed a structured, step-by-step methodology:
 
 **Attack Flow Diagram**
 
-  [Victim Browser]
-         |
-  (clicks phishing URL / submits credentials + MFA)
-         |
-         v
-  +-------------------+
-  |   Evilginx2 (AiTM)|
-  |  Reverse Proxy    |
-  | - Forwards traffic|
-  | - Captures creds  |
-  | - Captures cookies|
-  +-------------------+
-         |
- (forwards to legitimate service)
-         v
-  [Real Service / IdP]
-         |
- (issues session cookies / tokens)
-         |
-         v
-  <-- captured tokens stored on Evilginx2 -->
-         |
-         v
-  [Attacker Workspace]
-   (export cookies -> import with Cookie Editor)
-         |
- (inject stolen cookies into browser)
-         v
-  [Attacker Browser]
-  (impersonates victim — MFA bypass via replay)
+  ![Attack Flow](attack_flow.svg)
+  *Caption:* Victim interacts with a cloned sign-in page served through Evilginx2. Evilginx2 forwards traffic to the real service while capturing session cookies; attacker imports the cookies to impersonate the victim.
 
 
 
