@@ -1,7 +1,4 @@
----
-layout: page
-title: Tools
----
+
 
 - [Home](../index.md)
 
