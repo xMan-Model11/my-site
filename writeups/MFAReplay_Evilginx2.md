@@ -35,26 +35,21 @@ The following components were deployed to build a realistic test environment:
 The lab followed a structured, step-by-step methodology:
 
 1. **Infrastructure Provisioning**
-
    * Deployed an Evilginx2 server on GCP.
    * Registered a phishing domain and routed it through Cloudflare for DNS resolution.
    * Configured an **A record** to point traffic to the GCP instance.
 
 2. **Phishing Lure Creation**
-
    * Evilginx2 generated a phishing lure that cloned a legitimate sign-in page.
    * Test user clicked the lure and proceeded through username, password, and MFA entry.
 
 3. **Credential & Token Capture**
-
    * Evilginx2, acting as a transparent proxy, captured:
-
      * Username & password.
      * MFA one-time passcode.
      * Authentication tokens and session cookies issued by the real service.
 
 4. **Session Replay**
-
    * Captured session cookies were exported.
    * On a separate Kali machine, cookies were injected into a clean browser session using Cookie Editor.
    * The browser was able to impersonate the victim, fully bypassing MFA and gaining access.
