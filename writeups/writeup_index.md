@@ -3,6 +3,8 @@ layout: page
 title: Write-ups
 ---
 
+- [Home](index.md)
+
 # Write-ups
 
 Here you'll find my cybersecurity write-ups and case studies.
