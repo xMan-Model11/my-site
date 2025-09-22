@@ -59,6 +59,41 @@ The lab followed a structured, step-by-step methodology:
    * On a separate Kali machine, cookies were injected into a clean browser session using Cookie Editor.
    * The browser was able to impersonate the victim, fully bypassing MFA and gaining access.
 
+**Attack Flow Diagram**
+
+  [Victim Browser]
+         |
+  (clicks phishing URL / submits credentials + MFA)
+         |
+         v
+  +-------------------+
+  |   Evilginx2 (AiTM)|
+  |  Reverse Proxy    |
+  | - Forwards traffic|
+  | - Captures creds  |
+  | - Captures cookies|
+  +-------------------+
+         |
+ (forwards to legitimate service)
+         v
+  [Real Service / IdP]
+         |
+ (issues session cookies / tokens)
+         |
+         v
+  <-- captured tokens stored on Evilginx2 -->
+         |
+         v
+  [Attacker Workspace]
+   (export cookies -> import with Cookie Editor)
+         |
+ (inject stolen cookies into browser)
+         v
+  [Attacker Browser]
+  (impersonates victim — MFA bypass via replay)
+
+
+
 ---
 
 ## Findings
