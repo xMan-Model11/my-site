@@ -3,7 +3,7 @@ layout: page
 title: Tools
 ---
 
-- [Home](index.md)
+- [Home](gh-pages/index.md)
 
 # Tools 🔧 
 
