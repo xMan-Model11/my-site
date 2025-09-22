@@ -3,7 +3,7 @@ layout: page
 title: Write-ups
 ---
 
-- [Home](index.md)
+- [Home](../index.md)
 
 # Write-ups
 
