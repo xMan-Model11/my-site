@@ -1,7 +1,4 @@
----
-layout: page
-title: Write-ups
----
+
 
 - [Home](../index.md)
 
