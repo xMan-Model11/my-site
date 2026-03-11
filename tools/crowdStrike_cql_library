@@ -8,6 +8,8 @@ CrowdStrike Falcon NG-SIEM (Advanced Event Search) Triaging Suspicious DNS query
 | table([@timestamp, aid, ComputerName, UserName, DomainName, qlen, ContextProcessId])
 | sort(@timestamp, order=desc)
 
+----------------------------------------------------------------------------------------------
+
 //2 Extract ContextBaseFileName from raw text (when it appears only in metadata/rawstring)
 #event_simpleName=DnsRequest
 | aid="REPLACE_AID"
@@ -17,6 +19,8 @@ CrowdStrike Falcon NG-SIEM (Advanced Event Search) Triaging Suspicious DNS query
 | regex("ContextBaseFileName=(?<ContextBaseFileName>[^\\s]+)", field=@rawstring)
 | table([@timestamp, ComputerName, DomainName, qlen, ContextProcessId, ContextBaseFileName])
 | sort(@timestamp, order=desc)
+
+----------------------------------------------------------------------------------------------
 
 //3 Attribute DNSRequest --> ProcessRollup2 (good pivot point & correlation)
 #event_simpleName=DnsRequest
@@ -34,6 +38,7 @@ CrowdStrike Falcon NG-SIEM (Advanced Event Search) Triaging Suspicious DNS query
          ImageFileName, CommandLine, ParentBaseFileName, SHA256HashData])
 | sort(@timestamp, order=desc)
 
+----------------------------------------------------------------------------------------------
 
 //3B if join doesn't populate due to type mismatch
 #event_simpleName=DnsRequest
@@ -52,6 +57,7 @@ CrowdStrike Falcon NG-SIEM (Advanced Event Search) Triaging Suspicious DNS query
          ImageFileName, CommandLine, ParentBaseFileName, SHA256HashData])
 | sort(@timestamp, order=desc)
 
+----------------------------------------------------------------------------------------------
 
 //4 Pull ProcessRollup2 directly by ProcessIDs
 #event_simpleName=ProcessRollup2
@@ -68,8 +74,7 @@ CrowdStrike Falcon NG-SIEM (Advanced Event Search) Triaging Suspicious DNS query
 | groupBy([ComputerName], function=count())
 | sort(_count, order=desc)
 
-
-
+----------------------------------------------------------------------------------------------
 
 //6 Baseline suspicious Edge flag (optional sanity check)
 #event_simpleName=ProcessRollup2
