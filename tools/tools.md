@@ -10,4 +10,4 @@ Scripts and utilities for cybersecurity tasks. Here are some of the tools I've c
 - [FileLocator script](find_file.ps1)
 
 **CrowdStrike Queries**
-- [CQL Queries](crowdStrike_cql_library)
+- [Quick Suspicious DNS Hunting CQL queries ](cqlSuspiciousDnsHunting)
