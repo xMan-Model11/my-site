@@ -11,3 +11,6 @@ Scripts and utilities for cybersecurity tasks. Here are some of the tools I've c
 
 **CrowdStrike Queries**
 - [Quick Suspicious DNS Hunting CQL queries ](cqlSuspiciousDnsHunting)
+
+**Python Scripts**
+- [WebSleuth](curl_scrapper.py)
