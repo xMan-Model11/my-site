@@ -1,3 +1,9 @@
+---
+title: Tools
+layout: default
+permalink: /tools/
+---
+
 # Tools
 
 Collection of scripts and utilities for detection, hunting, and automation. Each tool lives in its own folder with a README that includes usage, examples, and verification hashes.
