@@ -4,6 +4,8 @@
 
 # Tools 🔧 
 
+- [Tools](/tools/README.md)
+
 Scripts and utilities for cybersecurity tasks. Here are some of the tools I've created:
 
 **PowerShell Scripts**
