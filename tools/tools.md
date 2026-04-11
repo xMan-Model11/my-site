@@ -29,7 +29,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   ```
   **SHA256**: 975354cfb5b4066a815f898e67088dffae13606be21306832a16c1facf389bc5
 
-- **App Hunting Tool** — `powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1`   
+- [**App Hunting Tool**](tools/powershell/AppHuntingRemoval_DisplayName) — `powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1`   
   **Purpose**: Enumerate installed apps and detect known malicious display names.  
   **Quick usage**:
   ```powershell
