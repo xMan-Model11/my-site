@@ -85,6 +85,5 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   python3 websleuth.py --min-confidence medium
   When prompted, enter the target URL, e.g.:
   Target URL[](https://example.com): example.com
-
   ```
   **SHA256**: 1dd41c9222fbdc4b398af2db59596118e7cc0fc7af2fa0dad68fc75c48d3eb2c
