@@ -1,7 +1,6 @@
-```
-markdown
-### Revised `index.md`
-```
+
+<!-- ### Revised `index.md` -->
+
 
 # Xaver — Security Operations Analyst
 
@@ -22,7 +21,7 @@ Experienced Security Operations Analyst focused on detection engineering, incide
 ## Pinned Work
 - **Write-ups** — Detailed lab case studies and investigations.  
 - **Tools** — Reusable scripts and detection queries.  
-- **Detection Rules** — Tested CQL/KQL rules with test cases.
+<!-- **Detection Rules** — Tested CQL/KQL rules with test cases. -->
 
 ---
 
