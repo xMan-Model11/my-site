@@ -29,7 +29,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   ```
   **SHA256**: 975354cfb5b4066a815f898e67088dffae13606be21306832a16c1facf389bc5
 
-- **App Hunting Tool** — `powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1` 
+- **App Hunting Tool** — `powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1`   
   **Purpose**: Enumerate installed apps and detect known malicious display names.  
   **Quick usage**:
   ```powershell
@@ -37,7 +37,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   ```
   **SHA256**: 988b02c06a0808396b8c268f4265f0199ca0c76b424e3514bbf405db86a7c8f9
 
-- **Get AD Group Members Filtered by OU** — powershell/AD/get-ADGroupMembersFilteredbyOU.ps1 
+- **Get AD Group Members Filtered by OU** — `powershell/AD/get-ADGroupMembersFilteredbyOU.ps1` 
   **Purpose**: Query AD group membership scoped to an OU. 
   **Quick usage**:
   ```powershell
@@ -45,7 +45,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   ```
   **SHA256**: 620f0191c1bb93878f411c1ac46f29c295c08eda97cc22e764583f1bad0c22c0
 
-- **Get AD Users Groups by UPN** — powershell/AD/get-ADGroupsFromUPNs.ps1 
+- **Get AD Users Groups by UPN** — `powershell/AD/get-ADGroupsFromUPNs.ps1` 
   **Purpose**: Query AD Users Group Membership scoped to an UPN(s).  
   **Quick usage**:
   ```powershell
@@ -53,7 +53,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   ```
   **SHA256**: 67c2abc28954e265d412ce3673d36d52c006443f1cdd82535a769ef076e8f20e
   
-- **Get AD Attributes by UPN** — powershell/AD/get-adUser-Email-SAMname-JobTitle-Dept-Co-Mgr_by_UPN.ps1 
+- **Get AD Attributes by UPN** — `powershell/AD/get-adUser-Email-SAMname-JobTitle-Dept-Co-Mgr_by_UPN.ps1` 
   **Purpose**: Query AD Attributes of users scoped to an UPN(s).  
   **Quick usage**:
   ```powershell
@@ -63,7 +63,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
 
 
 ### CrowdStrike Queries
-- **Quick Suspicious DNS Hunting CQL queries** — cql/cqlSuspiciousDnsHunting.cql  
+- **Quick Suspicious DNS Hunting CQL queries** — `cql/cqlSuspiciousDnsHunting.cql`  
   **Purpose**: Hunting for anomalous DNS patterns and suspicious domains.  
   **Quick usage**:
   ```CQL
@@ -73,7 +73,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
 
 
 ### Python Scripts
-- **WebSleuth** — python/curl_scrapper.py  
+- **WebSleuth** — `python/curl_scrapper.py`  
   **Purpose**: Lightweight web scraping for ctf low-hanging fruit (redacted for public use).  
   **Quick usage**:
   ```Python
