@@ -25,7 +25,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Search file systems for suspicious filenames and output CSV.  
   **Quick usage**:
   ```powershell
-  .\find_file.ps1 -Path C:\ -Pattern "*suspicious*"
+  .\find_file.ps1 -FileName "invoice.pdf"
   ```
   **SHA256**: 975354cfb5b4066a815f898e67088dffae13606be21306832a16c1facf389bc5
 
@@ -41,7 +41,10 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Query AD group membership scoped to an OU. 
   **Quick usage**:
   ```powershell
-  .<pending>"
+  Edit the top of script 
+  $GroupName = "Domain Admins"
+  $OuDn      = "OU=Staff,OU=Users,DC=corp,DC=example,DC=com"
+  .\Get-ADGroupMembersByOU.ps1
   ```
   **SHA256**: 620f0191c1bb93878f411c1ac46f29c295c08eda97cc22e764583f1bad0c22c0
 
@@ -49,7 +52,8 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Query AD Users Group Membership scoped to an UPN(s).  
   **Quick usage**:
   ```powershell
-  .<pending>"
+  Replace with your list of UPNs
+  .\Get-ADUsersGroupsFromUPNs.ps1
   ```
   **SHA256**: 67c2abc28954e265d412ce3673d36d52c006443f1cdd82535a769ef076e8f20e
   
@@ -57,7 +61,8 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Query AD Attributes of users scoped to an UPN(s).  
   **Quick usage**:
   ```powershell
-  .<pending>"
+  Replace with your list of UPNs
+  .\get-adUser-Email-SAMname-JobTitle-Dept-Co-Mgr_by_UPN.ps1
   ```
   **SHA256**: 9d832458f79777376ca6811a2929e7c1fd55256e6c25809c27925789667abcb0
 
@@ -67,7 +72,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Hunting for anomalous DNS patterns and suspicious domains.  
   **Quick usage**:
   ```CQL
-  How to test: include a short test case and expected alert in the query folder.
+  list of several cql queries when hunting for DNS queries
   ```
   **SHA256**: 51e62e15142589ee8c25b7e34e035a6c84b2b2e6375585c9adbbb52c3d4155ce
 
@@ -77,6 +82,9 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Lightweight web scraping for ctf low-hanging fruit (redacted for public use).  
   **Quick usage**:
   ```Python
-  How to test: include a short test case and expected alert in the query folder.
+  python3 websleuth.py --min-confidence medium
+  When prompted, enter the target URL, e.g.:
+  Target URL[](https://example.com): example.com
+
   ```
   **SHA256**: 1dd41c9222fbdc4b398af2db59596118e7cc0fc7af2fa0dad68fc75c48d3eb2c
