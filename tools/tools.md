@@ -33,7 +33,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
   **Purpose**: Enumerate installed apps and detect known malicious display names.  
   **Quick usage**:
   ```powershell
-  .<pending>"
+  Edit script with target app display name
   ```
   **SHA256**: 988b02c06a0808396b8c268f4265f0199ca0c76b424e3514bbf405db86a7c8f9
 
