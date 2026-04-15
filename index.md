@@ -13,7 +13,7 @@ Experienced Security Operations Analyst focused on detection engineering, incide
 - Incident response and threat hunting
 
 **Contact**  
-**LinkedIn**: www.linkedin.com/in/xaversecuritypro  
+**LinkedIn**: https://www.linkedin.com/in/xaversecuritypro  
 <!-- **Email**: email@example.com -->
 
 ---
