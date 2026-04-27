@@ -115,6 +115,3 @@ This vulnerability demonstrated a classic case of **insecure user-controlled inp
 
 *This write-up is part of my security research and CTF challenge portfolio.*
 ```
-- YAML front matter customized for your specific portfolio setup?
-
-Just let me know how you'd like to adjust it!
