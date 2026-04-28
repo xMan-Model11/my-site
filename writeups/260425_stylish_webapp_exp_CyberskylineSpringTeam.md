@@ -1,4 +1,4 @@
-```markdown
+``` Stylish Web App Exploitation Challenge
 ---
 title: Security Audit - Libre Marketing & Design Website
 date: 2026-04-25
