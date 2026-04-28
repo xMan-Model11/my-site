@@ -1,5 +1,7 @@
 # Project: MFA Replay Attack Emulation & Defense
 
+- [Home](../index.md)
+
 ## Overview
 
 This project demonstrates my ability to design and execute a **threat emulation lab** to evaluate the effectiveness of Multi-Factor Authentication (MFA) controls against modern adversary techniques. Specifically, I replicated a **phishing and session replay attack** using an adversary-in-the-middle (AiTM) approach.
