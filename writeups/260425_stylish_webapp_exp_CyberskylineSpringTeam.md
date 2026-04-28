@@ -1,5 +1,7 @@
 Stylish Web App Exploitation Challenge
 
+- [Home](../index.md)
+
 ```
 ---
 title: Security Audit - Libre Marketing & Design Website
