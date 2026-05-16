@@ -23,7 +23,7 @@ Collection of scripts and utilities for detection, hunting, and automation. Each
 ## Included Tools
 
 ### PowerShell Scripts
-- [**FileLocator**](tools/powershell/FileLocator) — `powershell/FileLocator/find_file.ps1`  
+- [**FileLocator**](tools/powershell/FileLocator/find_file.ps1) — `tools/powershell/FileLocator/find_file.ps1`  
   **Purpose**: Search file systems for suspicious filenames and output CSV.  
   **Quick usage**:
   ```powershell
