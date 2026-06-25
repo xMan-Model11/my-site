@@ -48,22 +48,22 @@ All tools are **open-source friendly**, well-documented, and designed for enterp
 | Tool | Purpose |
 |------|--------|
 | **[FileLocator](../tools/powershell/FileLocator/find_file.ps1)** | Rapidly hunts file systems for suspicious filenames and patterns (e.g. ransomware notes, phishing attachments). Exports results to CSV for fast triage and reporting. |
-| **[App Hunting Tool](./tools/powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1)** | Enumerates installed applications and automatically perform cleanup.|
-| **[Get AD Group Members Filtered by OU](./tools/powershell/AD/get-ADGroupMembersFilteredbyOU.ps1)** | Performs scoped Active Directory group enumeration limited to specific OUs. Critical for privilege auditing, least-privilege reviews, and identifying over-privileged accounts. |
-| **[Get AD Users Groups by UPN](./tools/powershell/AD/get-ADGroupsFromUPNs.ps1)** | Bulk retrieves group membership for lists of users by UPN. Accelerates access reviews, insider threat investigations, and offboarding workflows. |
-| **[Get AD Attributes by UPN](./tools/powershell/AD/get-adUser-Email-SAMname-JobTitle-Dept-Co-Mgr_by_UPN.ps1)** | Exports rich user attributes (email, job title, department, manager, etc.) for multiple accounts. Streamlines user risk assessments, access certification, and incident response enrichment. |
+| **[App Hunting Tool](../tools/powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1)** | Enumerates installed applications and automatically perform cleanup.|
+| **[Get AD Group Members Filtered by OU](../tools/powershell/AD/get-ADGroupMembersFilteredbyOU.ps1)** | Performs scoped Active Directory group enumeration limited to specific OUs. Critical for privilege auditing, least-privilege reviews, and identifying over-privileged accounts. |
+| **[Get AD Users Groups by UPN](../tools/powershell/AD/get-ADGroupsFromUPNs.ps1)** | Bulk retrieves group membership for lists of users by UPN. Accelerates access reviews, insider threat investigations, and offboarding workflows. |
+| **[Get AD Attributes by UPN](../tools/powershell/AD/get-adUser-Email-SAMname-JobTitle-Dept-Co-Mgr_by_UPN.ps1)** | Exports rich user attributes (email, job title, department, manager, etc.) for multiple accounts. Streamlines user risk assessments, access certification, and incident response enrichment. |
 
 ### CrowdStrike Falcon (CQL)
 
 | Tool | Purpose | Quick Start |
 |------|--------|-------------|
-| **[Suspicious DNS Hunting Queries](./tools/cql/cqlSuspiciousDnsHunting.cql)** | Ready-to-use queries for anomalous DNS, living-off-the-land, and suspicious domains | Load into LogScale and customize |
+| **[Suspicious DNS Hunting Queries](../tools/cql/cqlSuspiciousDnsHunting.cql)** | Ready-to-use queries for anomalous DNS, living-off-the-land, and suspicious domains | Load into LogScale and customize |
 
 ### Python
 
 | Tool | Purpose | Quick Start |
 |------|--------|-------------|
-| **[WebSleuth](./tools/python/curl_scrapper.py)** | Lightweight web scraping & enrichment (redacted for public CTF/low-hanging fruit use) |
+| **[WebSleuth](../tools/python/curl_scrapper.py)** | Lightweight web scraping & enrichment (redacted for public CTF/low-hanging fruit use) |
 
 ---
 
