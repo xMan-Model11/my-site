@@ -12,8 +12,9 @@ Experienced Security Operations Analyst focused on detection engineering, incide
 - Scripting and automation (PowerShell, Python)  
 - Incident response and threat hunting
 
-**Contact**  
-**LinkedIn**: https://www.linkedin.com/in/xaversecuritypro  
+## Contact
+- **LinkedIn**: [Xaver Security Pro](https://www.linkedin.com/in/xaversecuritypro)
+<!-- - **Email**: [your.email@domain.com](mailto:your.email@domain.com) -->  
 <!-- **Email**: email@example.com -->
 
 ---
