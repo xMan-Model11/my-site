@@ -47,7 +47,7 @@ All tools are **open-source friendly**, well-documented, and designed for enterp
 
 | Tool | Purpose |
 |------|--------|
-| **[FileLocator](./tools/powershell/FileLocator/find_file.ps1)** | Rapidly hunts file systems for suspicious filenames and patterns (e.g. ransomware notes, phishing attachments). Exports results to CSV for fast triage and reporting. |
+| **[FileLocator](../tools/powershell/FileLocator/find_file.ps1)** | Rapidly hunts file systems for suspicious filenames and patterns (e.g. ransomware notes, phishing attachments). Exports results to CSV for fast triage and reporting. |
 | **[App Hunting Tool](./tools/powershell/AppHuntingRemoval_DisplayName/AppHuntingRemoval_DisplayName.ps1)** | Enumerates installed applications and automatically perform cleanup.|
 | **[Get AD Group Members Filtered by OU](./tools/powershell/AD/get-ADGroupMembersFilteredbyOU.ps1)** | Performs scoped Active Directory group enumeration limited to specific OUs. Critical for privilege auditing, least-privilege reviews, and identifying over-privileged accounts. |
 | **[Get AD Users Groups by UPN](./tools/powershell/AD/get-ADGroupsFromUPNs.ps1)** | Bulk retrieves group membership for lists of users by UPN. Accelerates access reviews, insider threat investigations, and offboarding workflows. |
