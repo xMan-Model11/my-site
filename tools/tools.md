@@ -62,7 +62,7 @@ All tools are **open-source friendly**, well-documented, and designed for enterp
 ### Python
 
 | Tool | Purpose | Quick Start |
-|------|--------|-------------|--------|
+|------|--------|-------------|
 | **[WebSleuth](tools/python/curl_scrapper.py)** | Lightweight web scraping & enrichment (redacted for public CTF/low-hanging fruit use) |
 
 ---
