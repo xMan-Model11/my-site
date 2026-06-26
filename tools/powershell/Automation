@@ -1,0 +1,593 @@
+<#
+.SYNOPSIS
+    SharePoint Online tombstone-removal workflow (PnP-only).
+
+.DESCRIPTION
+    For each row in the input CSV (Confidence = High), the script:
+      1. Grants the operator temporary Site Collection Admin (SCA) on the target site.
+      2. Downloads the original file, hashes it (SHA-256), copies it to a secure share.
+      3. Uploads a tombstone .txt in place of the original.
+      4. Deletes the original (unless -NoDelete).
+      5. Revokes the operator's SCA grant.
+      6. Writes a per-step audit row to the tombstone log.
+
+.NOTES
+    Requires:
+        - PowerShell 7.4+
+        - PnP.PowerShell 2.x+
+        - SharePoint Administrator (or Global Admin) role on the connecting identity.
+        - Customer-owned Entra ID App Registration (PnP.PowerShell 2.x interactive auth).
+        - Do NOT import Microsoft.Online.SharePoint.PowerShell in the same session
+          (assembly conflict on Microsoft.Online.SharePoint.Client.Tenant.dll).
+
+    Connection model:
+        Uses PnP's *default* connection (no -Connection parameter on cmdlets).
+        Each call to New-PnPConnection switches the active context.
+#>
+
+param(
+    [Parameter(Mandatory = $true)]  [string]$CsvPath,
+    [Parameter(Mandatory = $true)]  [string]$TenantAdminUrl = "",
+    [Parameter(Mandatory = $true)]  [string]$OperatorUpn,
+    [Parameter(Mandatory = $true)]  [string]$SecureShareRoot,
+
+    [Parameter(Mandatory = $false)] [string]$LogPath = ".\tombstone-log.csv",
+    [Parameter(Mandatory = $false)] [switch]$NoDelete,
+    [Parameter(Mandatory = $false)] [int]$GrantWaitSeconds = 5,
+
+    # Interactive auth via customer-owned Entra ID app registration.
+    # Priority: explicit param > ENTRAID_CLIENT_ID env var > Set-PnPManagedAppId lookup.
+    [Parameter(Mandatory = $false)] [string]$InteractiveClientId = $env:ENTRAID_CLIENT_ID,
+
+    # Optional tenant identifier (GUID or domain, e.g., my_custom_domain.onmicrosoft.com).
+    [Parameter(Mandatory = $false)] [string]$Tenant,
+
+    # Optional app-only auth (unattended/SOAR).
+    [Parameter(Mandatory = $false)] [string]$ClientId,
+    [Parameter(Mandatory = $false)] [string]$TenantId,
+    [Parameter(Mandatory = $false)] [string]$CertificateThumbprint
+)
+
+$ErrorActionPreference = 'Stop'
+
+# Expected CSV columns: SiteUrl,ServerRelativeUrl,OriginalFileName,CaseId,Confidence
+
+#region Preflight ---------------------------------------------------------------
+
+function Test-PowerShellVersion {
+    $min = [Version]'7.4.0'
+    if ($PSVersionTable.PSEdition -ne 'Core' -or $PSVersionTable.PSVersion -lt $min) {
+        throw "PowerShell 7.4.0+ required. Current: $($PSVersionTable.PSVersion)"
+    }
+}
+
+function Test-NoConflictingModule {
+    # SPO Mgmt Shell + PnP in the same session = assembly conflict on
+    # Microsoft.Online.SharePoint.Client.Tenant.dll (0x80131040).
+    if (Get-Module -Name Microsoft.Online.SharePoint.PowerShell) {
+        throw "Microsoft.Online.SharePoint.PowerShell is loaded in this session. " +
+              "It conflicts with PnP.PowerShell. Start a fresh PowerShell session."
+    }
+}
+
+function Import-RequiredModules {
+    try { Import-Module PnP.PowerShell -ErrorAction Stop }
+    catch { throw "Failed to import PnP.PowerShell: $($_.Exception.Message)" }
+
+    # System.Web for HttpUtility.UrlDecode used by ConvertTo-ServerRelativeUrl
+    Add-Type -AssemblyName System.Web -ErrorAction SilentlyContinue
+}
+
+function Test-RequiredCommands {
+    $required = @(
+        'Connect-PnPOnline','Disconnect-PnPOnline','Get-PnPWeb','Get-PnPContext',
+        'Get-PnPProperty','Get-PnPTenantSite','Get-PnPSiteCollectionAdmin',
+        'Add-PnPSiteCollectionAdmin','Remove-PnPSiteCollectionAdmin',
+        'Get-PnPFile','Add-PnPFile','Remove-PnPFile','Set-PnPListItem'
+    )
+    foreach ($c in $required) {
+        if (-not (Get-Command $c -ErrorAction SilentlyContinue)) {
+            throw "Required PnP cmdlet not found: $c"
+        }
+    }
+}
+
+function Test-InteractiveAuthPrerequisites {
+    # Skip if app-only cert auth is configured
+    if ($ClientId -and $TenantId -and $CertificateThumbprint) { return }
+
+    if ($InteractiveClientId) { return }
+
+    # Check if PnP managed app id is configured
+    try {
+        $managed = Get-PnPManagedAppId -ErrorAction Stop
+        if ($managed) { return }
+    } catch { }
+
+    throw "Interactive auth requires a ClientId. Provide one via:`n" +
+          "  -InteractiveClientId <guid>`n" +
+          "  `$env:ENTRAID_CLIENT_ID = '<guid>'`n" +
+          "  Set-PnPManagedAppId -Url <tenant-url> -AppId '<guid>'"
+}
+
+#endregion
+
+#region Logging -----------------------------------------------------------------
+
+# Operator identity captured from the live admin connection (chain-of-custody).
+$script:RemovedBy = $null
+
+function Write-RunLog {
+    param(
+        [string]$CaseId,
+        [string]$SiteUrl,
+        [string]$ServerRelativeUrl,
+        [string]$OriginalFileName,
+        [string]$Step,
+        [string]$Status,
+        [string]$Message,
+        [string]$OriginalSHA256 = '',
+        [string]$SecuredCopyPath = ''
+    )
+
+    $row = [PSCustomObject]@{
+        TimestampUtc      = [DateTime]::UtcNow.ToString('o')
+        CaseId            = $CaseId
+        OperatorUpn       = $OperatorUpn
+        RemovedBy         = $script:RemovedBy
+        SiteUrl           = $SiteUrl
+        ServerRelativeUrl = $ServerRelativeUrl
+        OriginalFileName  = $OriginalFileName
+        Step              = $Step
+        Status            = $Status
+        OriginalSHA256    = $OriginalSHA256
+        SecuredCopyPath   = $SecuredCopyPath
+        Message           = $Message
+    }
+
+    $append = Test-Path -LiteralPath $LogPath
+    $row | Export-Csv -Path $LogPath -NoTypeInformation -Append:$append
+}
+
+#endregion
+
+#region Helpers -----------------------------------------------------------------
+
+function Ensure-Folder {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -Path $Path -ItemType Directory -Force | Out-Null
+    }
+}
+
+function Validate-CsvColumns {
+    param([array]$Items)
+    if (-not $Items -or $Items.Count -eq 0) { throw "CSV contains no rows." }
+
+    $required = @('SiteUrl','ServerRelativeUrl','OriginalFileName','CaseId','Confidence')
+    $cols = ($Items | Select-Object -First 1).PSObject.Properties.Name
+    foreach ($c in $required) {
+        if ($cols -notcontains $c) { throw "Missing required CSV column: $c" }
+    }
+}
+
+function ConvertTo-ServerRelativeUrl {
+    <#
+    .SYNOPSIS
+        Normalizes a SharePoint URL to a server-relative path.
+
+    .DESCRIPTION
+        Accepts either a full absolute URL (https://tenant.sharepoint.com/sites/x/Doc/file.xlsx)
+        or an already server-relative path (/sites/x/Doc/file.xlsx) and returns the
+        server-relative form with URL-encoding decoded (e.g., %20 -> space).
+        PnP file cmdlets (Get-PnPFile, Remove-PnPFile) require server-relative paths.
+    #>
+    param([string]$Url)
+
+    if ([string]::IsNullOrWhiteSpace($Url)) { return $Url }
+
+    $relative = $Url
+    if ($Url -match '^https?://[^/]+(/.+)$') {
+        $relative = $matches[1]
+    }
+    return [System.Web.HttpUtility]::UrlDecode($relative)
+}
+
+#endregion
+
+#region PnP Connection ---------------------------------------------------------
+
+function New-PnPConnection {
+    <#
+    .SYNOPSIS
+        Establishes a new active PnP connection (sets the default session context).
+
+    .NOTES
+        Intentionally does NOT use -ReturnConnection. PnP cmdlets in this script
+        operate on the *default* connection, which avoids per-cmdlet -Connection
+        parameter compatibility issues across PnP.PowerShell versions.
+    #>
+    param([string]$Url)
+
+    $params = @{
+        Url         = $Url
+        ErrorAction = 'Stop'
+    }
+
+    if ($ClientId -and $TenantId -and $CertificateThumbprint) {
+        # App-only certificate auth (SOAR / unattended)
+        $params.ClientId   = $ClientId
+        $params.Tenant     = $TenantId
+        $params.Thumbprint = $CertificateThumbprint
+    }
+    else {
+        # Interactive auth (PnP.PowerShell 2.x requires customer-owned ClientId)
+        $params.Interactive = $true
+        if ($InteractiveClientId) { $params.ClientId = $InteractiveClientId }
+        if ($Tenant)              { $params.Tenant   = $Tenant }
+    }
+
+    Connect-PnPOnline @params | Out-Null
+}
+
+function Connect-SharePointAdmin {
+    param([string]$TenantAdminUrl)
+
+    Write-Host "[AdminConnect] Connecting to SPO Admin via PnP: $TenantAdminUrl"
+    New-PnPConnection -Url $TenantAdminUrl
+
+    # Validate immediately
+    Get-PnPTenantSite -ErrorAction Stop | Select-Object -First 1 | Out-Null
+
+    # Capture operator identity once for chain-of-custody
+    if (-not $script:RemovedBy) {
+        try {
+            $web = Get-PnPWeb -ErrorAction Stop
+            $cu  = Get-PnPProperty -ClientObject $web -Property CurrentUser -ErrorAction Stop
+            $script:RemovedBy = $cu.LoginName
+            Write-Host "[AdminConnect] Authenticated as: $($script:RemovedBy)"
+        } catch {
+            Write-Host "[AdminConnect] WARNING: could not resolve CurrentUser. $($_.Exception.Message)"
+            $script:RemovedBy = "UNRESOLVED:$OperatorUpn"
+        }
+    }
+
+    Write-Host "[AdminConnect] Admin session established"
+}
+
+#endregion
+
+#region SCA Grant/Revoke -------------------------------------------------------
+
+function Test-OperatorIsSiteAdmin {
+    param([string]$OperatorUpn)
+
+    $admins = Get-PnPSiteCollectionAdmin -ErrorAction Stop
+    return $admins | Where-Object {
+        ($_.LoginName -and $_.LoginName -match [regex]::Escape($OperatorUpn)) -or
+        ($_.Email     -and $_.Email     -ieq $OperatorUpn)
+    }
+}
+
+function Grant-TemporaryAccess {
+    param([string]$SiteUrl, [string]$OperatorUpn)
+
+    # Switch default connection to the target site
+    New-PnPConnection -Url $SiteUrl
+
+    if (Test-OperatorIsSiteAdmin -OperatorUpn $OperatorUpn) {
+        Write-Host "[Grant] $OperatorUpn already SCA on $SiteUrl. Skipping add."
+        return @{ Granted = $false }
+    }
+
+    Add-PnPSiteCollectionAdmin -Owners $OperatorUpn -ErrorAction Stop
+    Write-Host "[Grant] SCA granted to $OperatorUpn on $SiteUrl"
+    return @{ Granted = $true }
+}
+
+function Revoke-TemporaryAccess {
+    param(
+        [string]$SiteUrl,
+        [string]$OperatorUpn,
+        [bool]$WasGrantedByScript
+    )
+
+    if (-not $WasGrantedByScript) {
+        Write-Host "[Revoke] Skipping - access pre-existed."
+        return
+    }
+
+    # Ensure we're connected to the right site
+    New-PnPConnection -Url $SiteUrl
+    Remove-PnPSiteCollectionAdmin -Owners $OperatorUpn -ErrorAction Stop
+    Write-Host "[Revoke] SCA removed for $OperatorUpn on $SiteUrl"
+}
+
+function Wait-ForSiteAccess {
+    param([string]$SiteUrl, [int]$Seconds = 5)
+    Write-Host "[Wait] $Seconds s for permission propagation on $SiteUrl"
+    Start-Sleep -Seconds $Seconds
+}
+
+#endregion
+
+#region File Operations --------------------------------------------------------
+
+function Get-OriginalFile {
+    param(
+        [string]$ServerRelativeUrl,
+        [string]$WorkingFolder,
+        [string]$OriginalFileName
+    )
+
+    Ensure-Folder -Path $WorkingFolder
+    Get-PnPFile -Url $ServerRelativeUrl -Path $WorkingFolder -FileName $OriginalFileName `
+                -AsFile -Force -ErrorAction Stop
+
+    return (Join-Path $WorkingFolder $OriginalFileName)
+}
+
+function Get-Sha256 {
+    param([string]$Path)
+    (Get-FileHash -Path $Path -Algorithm SHA256 -ErrorAction Stop).Hash
+}
+
+function Save-ToSecureShare {
+    param(
+        [string]$SourceFilePath,
+        [string]$SecureShareRoot,
+        [string]$CaseId,
+        [string]$ExpectedSha256
+    )
+
+    $destFolder = Join-Path $SecureShareRoot $CaseId
+    Ensure-Folder -Path $destFolder
+
+    $fileName = [System.IO.Path]::GetFileName($SourceFilePath)
+    $destFile = Join-Path $destFolder $fileName
+
+    Copy-Item -Path $SourceFilePath -Destination $destFile -Force
+
+    # Integrity verification post-copy
+    $copyHash = Get-Sha256 -Path $destFile
+    if ($copyHash -ne $ExpectedSha256) {
+        throw "Secure-share copy hash mismatch. Expected $ExpectedSha256, got $copyHash"
+    }
+
+    return $destFile
+}
+
+function New-TombstoneText {
+    param(
+        [string]$OriginalFileName,
+        [string]$CaseId,
+        [string]$RemovedBy,
+        [string]$OriginalSHA256
+    )
+
+@"
+This file has been removed by IT Security.
+
+Reason:
+    Identified for review by the Information Security team.
+
+Case ID:           $CaseId
+Original file:     $OriginalFileName
+Removed by:        $RemovedBy
+Removed on (UTC):  $([DateTime]::UtcNow.ToString('o'))
+Original SHA-256:  $OriginalSHA256
+
+If you require access to this content, contact IT Security and
+reference the Case ID above.
+"@
+}
+
+function New-TombstoneFile {
+    param(
+        [string]$WorkingFolder,
+        [string]$OriginalFileName,
+        [string]$CaseId,
+        [string]$RemovedBy,
+        [string]$OriginalSHA256
+    )
+
+    $baseName       = [System.IO.Path]::GetFileNameWithoutExtension($OriginalFileName)
+    $tombstoneName  = "${baseName}_removed.txt"
+    $tombstonePath  = Join-Path $WorkingFolder $tombstoneName
+
+    $content = New-TombstoneText -OriginalFileName $OriginalFileName `
+                                 -CaseId $CaseId `
+                                 -RemovedBy $RemovedBy `
+                                 -OriginalSHA256 $OriginalSHA256
+    Set-Content -Path $tombstonePath -Value $content -Encoding UTF8
+    return $tombstonePath
+}
+
+function Get-ParentServerRelativeFolder {
+    <#
+    .SYNOPSIS
+        Returns the server-relative folder for a server-relative file path,
+        preserving forward slashes (unlike Split-Path on Windows).
+    #>
+    param([string]$ServerRelativeUrl)
+
+    $normalized = $ServerRelativeUrl -replace '\\','/'
+    $lastSlash  = $normalized.LastIndexOf('/')
+    if ($lastSlash -le 0) {
+        throw "Cannot determine parent folder for: $ServerRelativeUrl"
+    }
+    return $normalized.Substring(0, $lastSlash)
+}
+
+function Set-TombstoneFile {
+    param(
+        [string]$TombstonePath,
+        [string]$ServerRelativeUrl,
+        [string]$CaseId,
+        [string]$OriginalSHA256
+    )
+
+    $targetFolder = Get-ParentServerRelativeFolder -ServerRelativeUrl $ServerRelativeUrl
+    Write-Host "[Upload] Target folder: $targetFolder"
+    Write-Host "[Upload] Tombstone file: $(Split-Path $TombstonePath -Leaf)"
+
+    $uploaded = Add-PnPFile -Path $TombstonePath -Folder $targetFolder -ErrorAction Stop
+
+    # Best-effort metadata stamping (silently no-ops if columns don't exist)
+    try {
+        Set-PnPListItem -List $uploaded.ListItemAllFields.ParentList `
+                        -Identity $uploaded.ListItemAllFields.Id `
+                        -Values @{
+                            'Title'          = "Tombstone for $CaseId"
+                            'TombstoneCase'  = $CaseId
+                            'OriginalSHA256' = $OriginalSHA256
+                        } -ErrorAction SilentlyContinue | Out-Null
+    } catch { }
+}
+
+function Remove-OriginalFile {
+    param([string]$ServerRelativeUrl)
+    Remove-PnPFile -ServerRelativeUrl $ServerRelativeUrl -Force -ErrorAction Stop
+}
+
+#endregion
+
+#region Main --------------------------------------------------------------------
+
+Test-PowerShellVersion
+Test-NoConflictingModule
+Import-RequiredModules
+Test-RequiredCommands
+Test-InteractiveAuthPrerequisites
+
+$items = Import-Csv -Path $CsvPath
+Validate-CsvColumns -Items $items
+Ensure-Folder -Path $SecureShareRoot
+
+# Admin connection established ONCE, outside the loop
+Connect-SharePointAdmin -TenantAdminUrl $TenantAdminUrl
+
+foreach ($item in $items) {
+    $siteUrl           = $item.SiteUrl
+    $serverRelativeUrl = ConvertTo-ServerRelativeUrl -Url $item.ServerRelativeUrl
+    $originalFileName  = $item.OriginalFileName
+    $caseId            = $item.CaseId
+    $confidence        = if ($item.Confidence) { $item.Confidence.Trim() } else { '' }
+
+    $wasGrantedByScript = $false
+    $currentStep        = "NotStarted"
+    $originalHash       = ''
+    $securedCopy        = ''
+
+    # Strict allow-list: only "High" proceeds
+    if ($confidence -inotmatch '^high$') {
+        Write-RunLog -CaseId $caseId -SiteUrl $siteUrl `
+            -ServerRelativeUrl $serverRelativeUrl -OriginalFileName $originalFileName `
+            -Step 'ConfidenceCheck' -Status 'Skipped' `
+            -Message "Confidence='$confidence' not High."
+        continue
+    }
+
+    $workingFolder = Join-Path $env:TEMP ("Tombstone_" + $caseId)
+
+    try {
+        Write-Host "=================================================="
+        Write-Host "Processing $originalFileName [$caseId]"
+        Write-Host "  Site:               $siteUrl"
+        Write-Host "  ServerRelativeUrl:  $serverRelativeUrl"
+
+        $currentStep = 'GrantTemporaryAccess'
+        $grantResult        = Grant-TemporaryAccess -SiteUrl $siteUrl -OperatorUpn $OperatorUpn
+        $wasGrantedByScript = $grantResult.Granted
+
+        $currentStep = 'WaitForAccess'
+        Wait-ForSiteAccess -SiteUrl $siteUrl -Seconds $GrantWaitSeconds
+
+        # Validate site context (still on $siteUrl from Grant)
+        $currentStep = 'ValidateSiteContext'
+        Get-PnPWeb -ErrorAction Stop | Out-Null
+
+        $currentStep = 'GetOriginalFile'
+        $downloadedFile = Get-OriginalFile -ServerRelativeUrl $serverRelativeUrl `
+                                           -WorkingFolder $workingFolder `
+                                           -OriginalFileName $originalFileName
+
+        $currentStep = 'HashOriginal'
+        $originalHash = Get-Sha256 -Path $downloadedFile
+        Write-Host "[Hash] SHA-256: $originalHash"
+
+        $currentStep = 'SaveToSecureShare'
+        $securedCopy = Save-ToSecureShare -SourceFilePath $downloadedFile `
+                                          -SecureShareRoot $SecureShareRoot `
+                                          -CaseId $caseId `
+                                          -ExpectedSha256 $originalHash
+
+        $currentStep = 'CreateTombstone'
+        $tombstoneFile = New-TombstoneFile -WorkingFolder $workingFolder `
+                                           -OriginalFileName $originalFileName `
+                                           -CaseId $caseId `
+                                           -RemovedBy $script:RemovedBy `
+                                           -OriginalSHA256 $originalHash
+
+        $currentStep = 'UploadTombstone'
+        Set-TombstoneFile -TombstonePath $tombstoneFile `
+                          -ServerRelativeUrl $serverRelativeUrl `
+                          -CaseId $caseId `
+                          -OriginalSHA256 $originalHash
+
+        $currentStep = 'RemoveOriginalFile'
+        if (-not $NoDelete) {
+            Remove-OriginalFile -ServerRelativeUrl $serverRelativeUrl
+            $deleteMessage = 'original removed'
+        } else {
+            $deleteMessage = 'original NOT removed (-NoDelete)'
+        }
+
+        $currentStep = 'RevokeTemporaryAccess'
+        Revoke-TemporaryAccess -SiteUrl $siteUrl -OperatorUpn $OperatorUpn `
+                               -WasGrantedByScript $wasGrantedByScript
+
+        Write-RunLog -CaseId $caseId -SiteUrl $siteUrl `
+            -ServerRelativeUrl $serverRelativeUrl -OriginalFileName $originalFileName `
+            -Step $currentStep -Status 'Success' `
+            -OriginalSHA256 $originalHash -SecuredCopyPath $securedCopy `
+            -Message "Secured copy verified, tombstone uploaded, $deleteMessage."
+    }
+    catch {
+        # Capture full exception detail for audit forensics
+        $errorDetail  = ($_ | Out-String).Trim()
+        $errorMessage = "Step [$currentStep] failed. $($_.Exception.Message)"
+
+        Write-RunLog -CaseId $caseId -SiteUrl $siteUrl `
+            -ServerRelativeUrl $serverRelativeUrl -OriginalFileName $originalFileName `
+            -Step $currentStep -Status 'Failed' `
+            -OriginalSHA256 $originalHash -SecuredCopyPath $securedCopy `
+            -Message $errorMessage
+
+        Write-Warning $errorDetail
+
+        # CRITICAL: stale SCA = audit finding. LOUD failure if revoke fails.
+        try {
+            Revoke-TemporaryAccess -SiteUrl $siteUrl -OperatorUpn $OperatorUpn `
+                                   -WasGrantedByScript $wasGrantedByScript
+        }
+        catch {
+            $revokeErr = $_.Exception.Message
+            Write-Warning "CRITICAL: Failed to revoke SCA for $OperatorUpn on $siteUrl. MANUAL REMEDIATION REQUIRED. $revokeErr"
+            Write-RunLog -CaseId $caseId -SiteUrl $siteUrl `
+                -ServerRelativeUrl $serverRelativeUrl -OriginalFileName $originalFileName `
+                -Step 'RevokeFailure' -Status 'Critical' `
+                -Message "Stale SCA grant for $OperatorUpn. Manual revoke required. $revokeErr"
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $workingFolder) {
+            Remove-Item -Path $workingFolder -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+# Final teardown
+try { Disconnect-PnPOnline -ErrorAction SilentlyContinue } catch { }
+
+#endregion
